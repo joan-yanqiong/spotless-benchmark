@@ -1,0 +1,25 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/gaitilab/spotless/master/assets/schema_input.json",
+    "title": "gaitilab/spotless pipeline - params.input schema",
+    "description": "Schema for the file provided with params.input",
+    "type": "array",
+    "items": {
+    "type": "object",
+    "properties": {
+        "sample_id": {
+        "type": "string",
+        "pattern": "^\\S+$",
+        "errorMessage": "Sample name must be provided and cannot contain spaces"
+        },
+        "sample_object": {
+        "type": "string",
+        "pattern": "^\\S+\\.(rds|h5ad)$",
+        "format": "file-path",
+        "errorMessage": "Sample object should be a path to a Seurat object (.rds) or AnnData object (.h5ad)"
+        }
+    },
+    "required": ["sample_id", "sample_object" ]
+    }
+
+}
