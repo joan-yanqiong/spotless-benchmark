@@ -1,3 +1,13 @@
+.nextflow*
+work/
+data/
+results/
+.DS_Store
+testing/
+testing*
+*.pyc
+null/
+
 #### R ####
 # History files
 .Rhistory
@@ -62,3 +72,15 @@ logs/*
 trace*
 *jpeg
 *png
+
+
+*/__pycache__/*
+.DS_Store
+._*
+
+nf-work
+.vscode
+output_testing
+.nextflow.log*
+slurm_out/*
+containers
