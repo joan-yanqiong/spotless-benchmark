@@ -1,7 +1,7 @@
 outdir: "/cluster/projects/gaitigroup/Users/Joan/spotless-benchmark/output_testing"
 
 # Handle input
-sc_input: "/cluster/projects/gaitigroup/Users/Joan/spotless-benchmark/unit-test/test_sc_data.rds"
+sc_input: "/cluster/projects/gaitigroup/Users/Joan/spotless-benchmark/assets/unit-test/test_sc_data.rds"
 
 epoch_build: 10
 epoch_fit: 10
@@ -19,30 +19,31 @@ annot: "subclass"
 # Provide an absolute file directory
 remap_annot: false
 sampleID: "none"
-deconv_args: {
-  cell2location: {build: "", fit:""}, 
-  stereoscope: "", spotlight: "",
-  destvi: {build: "", fit: ""}, 
-  dstg: {dir: ""}, 
-  rctd: "", 
-  seurat: "", 
-  tangram: "", 
-  stride: ""
-}
+deconv_args:
+  {
+    cell2location: { build: "", fit:"" },
+    stereoscope: "",
+    spotlight: "",
+    destvi: { build: "", fit: "" },
+    dstg: { dir: "" },
+    rctd: "",
+    seurat: "",
+    tangram: "",
+    stride: "",
+  }
 
 synthspot: {}
 
 # methods music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg,tangram,seurat,stride
-methods: "dstg"
+methods: "spatialdwls,rctd,cell2location"
 
 # Handling GPU use
 gpu: false
 # only matters if gpu is true
-cuda_device: 0 
-
+cuda_device: 0
 
 verbose: false
-# Don't calculate metrics 
+# Don't calculate metrics
 skip_metrics: true
 
 runID_props: ""
