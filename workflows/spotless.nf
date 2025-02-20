@@ -7,10 +7,7 @@ include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_spotless_pipeline'
 
-include { RUN_DECONVOLUTION } from '../subworkflows/local/deconvolution/main.nf'
-include { COMPUTE_METRICS } from '../subworkflows/local/evaluation/main.nf'
-include { GENERATE_SYNTHETIC_DATA } from '../subworkflows/local/data_generation/generate_data.nf'
-
+include { RUN_DECONVOLUTION      } from '../subworkflows/local/deconvolution/main.nf'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -19,10 +16,10 @@ include { GENERATE_SYNTHETIC_DATA } from '../subworkflows/local/data_generation/
 */
 
 workflow SPOTLESS {
-
     take:
     ch_samplesheet // channel: samplesheet read in from --input
-    ch_ref_obj // value channel: [ path(sc_input) ]
+    ch_ref_obj     // value channel: [ path(sc_input) ]
+
     main:
 
     ch_versions = Channel.empty()
@@ -34,7 +31,7 @@ workflow SPOTLESS {
     // all_standards = gold_standards + silver_standards + silver_standards_coarse + ["silver_standard_1-10", "silver_standard_1-11"]
     all_modes = ["run_standard", "run_dataset", "generate_and_run"]
 
-    if (!all_modes.contains(params.mode)){
+    if (!all_modes.contains(params.mode)) {
         throw new Exception("Error: please enter --mode as 'run_standard', 'run_dataset', or 'generate_and_run'")
     }
 
@@ -76,7 +73,7 @@ workflow SPOTLESS {
 
     // sc_input_type = params.sc_input.split("\\.").last() =~ /h5/ ? "h5ad" : "rds"
     // sp_input_type = ch_samplesheet[1].split("\\.").last() =~ /h5/ ? "h5ad" : "rds"
-    
+
     // println("The single-cell data is of ${sc_input_type} format and the spatial data is of ${sp_input_type} format.")
 
     // // Print arguments
@@ -92,11 +89,8 @@ workflow SPOTLESS {
     // // // // Can have one or more files
     // // sp_input_ch = (params.mode ==~ /generate_and_run/ ? GENERATE_SYNTHETIC_DATA.out : ch_samplesheet)
 
-    
-
-    // // RUN_DECONVOLUTION(sc_input_ch, sp_input_ch, sc_input_type, sp_input_type)
     RUN_DECONVOLUTION(ch_ref_obj, ch_samplesheet)
-    
+
     // if (!params.skip_metrics){
     //     COMPUTE_METRICS(RUN_DECONVOLUTION.out)
     // }
@@ -107,19 +101,12 @@ workflow SPOTLESS {
     softwareVersionsToYAML(ch_versions)
         .collectFile(
             storeDir: "${params.outdir}/pipeline_info",
-            name:  'spotless_software_'  + 'versions.yml',
+            name: 'spotless_software_' + 'versions.yml',
             sort: true,
-            newLine: true
-        ).set { ch_collated_versions }
-
+            newLine: true,
+        )
+        .set { ch_collated_versions }
 
     emit:
-    versions       = ch_versions                 // channel: [ path(versions.yml) ]
-
+    versions = ch_versions // channel: [ path(versions.yml) ]
 }
-
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    THE END
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
