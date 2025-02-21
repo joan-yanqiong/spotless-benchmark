@@ -5,7 +5,6 @@ nextflow.enable.dsl = 2
 // include { MUSIC_DOWNSAMPLE_SCRNASEQ_REF } from '../../../modules/local/music/downsample_scrnaseq_ref'
 // include { MUSIC_CHECK_SCRNASEQ_REF_SIZE } from '../../../modules/local/music/check_scrnaseq_ref_size'
 include { RCTD_RUN                                                } from '../../../modules/local/rctd'
-include { SPOTLIGHT_RUN                                           } from '../../../modules/local/spotlight'
 include { SPATIALDWLS_RUN                                         } from '../../../modules/local/spatialdwls'
 include { CELL2LOCATION_BUILD_MODEL                               } from '../../../modules/local/cell2location/build_model'
 include { CELL2LOCATION_FIT_MODEL                                 } from '../../../modules/local/cell2location/fit_model'
