@@ -32,6 +32,8 @@ include {
     UTILS_FORMAT_TSV_FILE as STRIDE_FORMAT
 } from '../../../modules/local/utils/format_tsv_file'
 include { UTILS_CREATE_DUMMY_FILE                                 } from '../../../modules/local/utils/create_dummy_file'
+include { UTILS_DOWNSAMPLE_SCRNASEQ_REF                           } from '../../../modules/local/utils/downsample_scrnaseq_ref'
+
 
 workflow {
 
@@ -110,14 +112,25 @@ workflow RUN_DECONVOLUTION {
         }
         .set { ch_sp_paired_obj }
 
+    // Needed for SpatialDWLS and MUSIC
+    UTILS_DOWNSAMPLE_SCRNASEQ_REF(ch_ref_paired_obj.rds)
+
+    UTILS_DOWNSAMPLE_SCRNASEQ_REF.out.rds
+        .ifEmpty { ch_ref_paired_obj.rds }
+        .set { ch_ref_obj_downsampled }
+
+
 
     ch_ref_paired_obj.rds
+        .combine(ch_ref_obj_downsampled)
         .combine(ch_sp_paired_obj.rds)
-        .multiMap { ref_obj, meta, sp_obj ->
+        .multiMap { ref_obj, ref_obj_downsampled, meta, sp_obj ->
             ref_obj: ref_obj
+            ref_obj_downsampled: ref_obj_downsampled
             sp_input: [meta, sp_obj]
         }
         .set { ch_r_methods_input }
+
 
     // // R methods
     if (!methods_list.disjoint(r_methods)) {
@@ -144,7 +157,7 @@ workflow RUN_DECONVOLUTION {
         }
 
         if (methods =~ /spatialdwls/) {
-            SPATIALDWLS_RUN(ch_r_methods_input.ref_obj, ch_r_methods_input.sp_input)
+            SPATIALDWLS_RUN(ch_r_methods_input.ref_obj_downsampled, ch_r_methods_input.sp_input)
             output_ch = output_ch.mix(SPATIALDWLS_RUN.out.txt)
         }
     }
