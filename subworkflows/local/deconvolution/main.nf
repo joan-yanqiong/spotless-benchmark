@@ -33,35 +33,6 @@ include {
 include { UTILS_CREATE_DUMMY_FILE                                 } from '../../../modules/local/utils/create_dummy_file'
 include { UTILS_DOWNSAMPLE_SCRNASEQ_REF                           } from '../../../modules/local/utils/downsample_scrnaseq_ref'
 
-
-workflow {
-
-    if (!(params.mode ==~ /run_dataset/)) {
-        throw new Exception("Error: can only run this with the 'run_dataset' mode")
-    }
-
-    // RUN ON YOUR OWN DATA
-    println("Running the pipeline on the provided data...")
-
-    // Print inputs (the timing isn't right with with view(), so do this instead)
-    // Although view() has the advantage that it gives the absolute path (ch_ref_obj.view())
-    if (params.verbose) {
-        println("Single-cell reference dataset:")
-        println(file(params.sc_input))
-
-        println("\nSpatial dataset(s):")
-        // With glob pattern, there will be multiple files
-        params.sp_input =~ /\*/ ? file(params.sp_input).each { println("${it}") } : println(file(params.sp_input))
-    }
-
-    ch_ref_obj = Channel.fromPath(params.sc_input)
-    // Can only have 1 file
-    ch_sp_obj = Channel.fromPath(params.sp_input)
-    // Can have one or more files
-
-    RUN_DECONVOLUTION(ch_ref_obj, ch_sp_obj)
-}
-
 workflow RUN_DECONVOLUTION {
     take:
     ch_ref_obj
@@ -80,7 +51,11 @@ workflow RUN_DECONVOLUTION {
     // collect output channels
 
     // ---- Prepare scRNAseq reference ----
+    // Conversion of scRNAseq ref. dataset to either h5ad (ScanPy; Python) or rds (Seurat; R)
     SC_OBJECT_CONVERT(ch_ref_obj)
+
+    // Needed: list with rds and h5ad version; use combine() to create a single list
+    SC_OBJECT_CONVERT.out
         .combine(ch_ref_obj)
         .flatten()
         .branch { it ->
@@ -92,17 +67,33 @@ workflow RUN_DECONVOLUTION {
         }
         .set { ch_ref_paired_obj }
 
-    ch_sp_obj_only = ch_sp_obj.map { it ->
-        it[1]
+    // Needed for SpatialDWLS and MUSIC
+    UTILS_DOWNSAMPLE_SCRNASEQ_REF(ch_ref_paired_obj.rds)
+
+    UTILS_DOWNSAMPLE_SCRNASEQ_REF.out.rds
+        .collect()
+        .ifEmpty { file(params.sc_input) }
+        .set { ch_ref_obj_downsampled }
+
+
+    ch_ref_paired_obj.rds
+        .combine(ch_ref_obj_downsampled)
+        .set { ch_ref_obj_r }
+
+    // ---- Convert ST data to either rds or h5ad ---- #
+    // Extract spatial data file, i.e. remove metadata
+    ch_sp_obj_only = ch_sp_obj.map { _meta, filepath ->
+        filepath
     }
 
+    // Conversion spatial data format
     ch_sp_obj
         .map { meta, filepath ->
             [filepath.simpleName, meta, filepath]
         }
         .join(
-            SP_OBJECT_CONVERT(ch_sp_obj_only).map { it ->
-                [it.simpleName, it]
+            SP_OBJECT_CONVERT(ch_sp_obj_only).map { filepath ->
+                [filepath.simpleName, filepath]
             }
         )
         .multiMap { _key, meta, filepath1, filepath2 ->
@@ -111,17 +102,8 @@ workflow RUN_DECONVOLUTION {
         }
         .set { ch_sp_paired_obj }
 
-    // Needed for SpatialDWLS and MUSIC
-    UTILS_DOWNSAMPLE_SCRNASEQ_REF(ch_ref_paired_obj.rds)
-
-    UTILS_DOWNSAMPLE_SCRNASEQ_REF.out.rds
-        .ifEmpty { ch_ref_paired_obj.rds }
-        .set { ch_ref_obj_downsampled }
-
-
-
-    ch_ref_paired_obj.rds
-        .combine(ch_ref_obj_downsampled)
+    // ---- Combine spatial and ref. data ----
+    ch_ref_obj_r
         .combine(ch_sp_paired_obj.rds)
         .multiMap { ref_obj, ref_obj_downsampled, meta, sp_obj ->
             ref_obj: ref_obj
@@ -147,12 +129,6 @@ workflow RUN_DECONVOLUTION {
         if (methods =~ /rctd/) {
             RCTD_RUN(ch_r_methods_input.ref_obj, ch_r_methods_input.sp_input)
             output_ch = output_ch.mix(RCTD_RUN.out.txt)
-        }
-
-        if (methods =~ /spotlight/) {
-            SPOTLIGHT_RUN(ch_r_methods_input.ref_obj, ch_r_methods_input.sp_input)
-            ch_r_methods_input.ref_obj.view()
-            output_ch = output_ch.mix(SPOTLIGHT_RUN.out)
         }
 
         if (methods =~ /spatialdwls/) {

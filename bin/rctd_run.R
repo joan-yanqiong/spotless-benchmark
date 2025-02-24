@@ -272,8 +272,7 @@ write.table(
     deconv_matrix,
     file = user_args$output,
     sep = "\t",
-    quote = FALSE,
-    row.names = FALSE
+    quote = FALSE
 )
 
 message("Finished!")

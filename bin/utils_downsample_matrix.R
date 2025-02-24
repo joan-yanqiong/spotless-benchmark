@@ -122,7 +122,7 @@ message("Found ", ncelltypes, "cell types in the reference.\n")
 
 if (prod(dim(seurat_obj_scRNA)) <= 2**31) {
     message("Reference size is OK...")
-    file.create("ok.txt")
+    file.create("ok.rds")
 } else {
     message("Reference is too large, downsample...")
     ### MAIN CODE ###

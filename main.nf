@@ -13,35 +13,9 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { SPOTLESS  } from './workflows/spotless'
+include { SPOTLESS                } from './workflows/spotless'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_spotless_pipeline'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_spotless_pipeline'
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    NAMED WORKFLOWS FOR PIPELINE
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
-
-//
-// WORKFLOW: Run main analysis pipeline depending on type of input
-//
-workflow GAITILAB_SPOTLESS {
-
-    take:
-    samplesheet // channel: samplesheet read in from --input
-    ch_ref_obj // value channel
-
-    main:
-
-    //
-    // WORKFLOW: Run pipeline
-    //
-    SPOTLESS (
-        samplesheet, 
-        ch_ref_obj // value channel: [ path(sc_input) ]
-
-    )
-}
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
@@ -49,12 +23,10 @@ workflow GAITILAB_SPOTLESS {
 */
 
 workflow {
-
-    main:
     //
     // SUBWORKFLOW: Run initialisation tasks
     //
-    PIPELINE_INITIALISATION (
+    PIPELINE_INITIALISATION(
         params.version,
         params.validate_params,
         params.monochrome_logs,
@@ -66,21 +38,39 @@ workflow {
     //
     // WORKFLOW: Run main workflow
     //
-    GAITILAB_SPOTLESS (
-        PIPELINE_INITIALISATION.out.samplesheet, 
-        Channel.value(file(params.sc_input))
+    GAITILAB_SPOTLESS(
+        PIPELINE_INITIALISATION.out.samplesheet,
+        Channel.value(file(params.sc_input)),
     )
     //
     // SUBWORKFLOW: Run completion tasks
     //
-    PIPELINE_COMPLETION (
+    PIPELINE_COMPLETION(
         params.outdir,
         params.monochrome_logs,
     )
 }
-
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    THE END
+    NAMED WORKFLOWS FOR PIPELINE
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
+
+//
+// WORKFLOW: Run main analysis pipeline depending on type of input
+//
+workflow GAITILAB_SPOTLESS {
+    take:
+    samplesheet // channel: samplesheet read in from --input
+    ch_ref_obj  // value channel
+
+    main:
+
+    //
+    // WORKFLOW: Run pipeline
+    //
+    SPOTLESS(
+        samplesheet,
+        ch_ref_obj,
+    )
+}

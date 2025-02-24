@@ -105,13 +105,13 @@ def get_args():
 
 
 def build_model(
-    cuda_device,
-    sc_data_path,
-    sample_column,
-    annotation_column,
-    tech_column,
-    epochs=250,
-    posterior_sampling=1000,
+    cuda_device: str,
+    sc_data_path: str,
+    sample_column: str,
+    annotation_column: str,
+    tech_column: str,
+    epochs: int = 250,
+    posterior_sampling: int = 1000,
 ):
     ##### MAIN CODE #####
 

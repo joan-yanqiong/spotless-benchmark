@@ -92,12 +92,12 @@ def get_args():
 
 
 def fit_model(
-    cuda_device,
-    sp_data_path,
-    n_cells_per_location=8,
-    detection_alpha=200,
-    posterior_sampling=1000,
-    epochs=30000,
+    cuda_device: str,
+    sp_data_path: str,
+    n_cells_per_location: int = 8,
+    detection_alpha: int = 200,
+    posterior_sampling: int = 1000,
+    epochs: int = 30000,
 ):
     logging.info("Reading in spatial data from " + sp_data_path + "...")
     adata = sc.read_h5ad(sp_data_path)
