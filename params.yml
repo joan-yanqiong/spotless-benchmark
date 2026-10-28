@@ -3,8 +3,8 @@ outdir: "/cluster/projects/gaitigroup/Users/Joan/spotless-benchmark/output_testi
 # Handle input
 sc_input: "/cluster/projects/gaitigroup/Users/Joan/spotless-benchmark/assets/unit-test/test_sc_data.rds"
 
-epoch_build: 10
-epoch_fit: 10
+epoch_build: 1
+epoch_fit: 1
 
 deconv_args.dstg.dir: "$HOME"
 
@@ -21,7 +21,8 @@ remap_annot: false
 sampleID: "none"
 deconv_args:
   {
-    cell2location: { build: "", fit:"" },
+    cell2location:
+      { build: "--posterior_sampling 10", fit:"--posterior_sampling 10" },
     stereoscope: "",
     spotlight: "",
     destvi: { build: "", fit: "" },
@@ -35,7 +36,7 @@ deconv_args:
 synthspot: {}
 
 # methods music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg,tangram,seurat,stride
-methods: "spatialdwls,rctd,cell2location"
+methods: "spatialdwls"
 
 # Handling GPU use
 gpu: false

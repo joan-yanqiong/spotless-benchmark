@@ -27,46 +27,55 @@ par[names(args)] <- args
 par[grepl("^[0-9\\.]+$", par)] <- as.numeric(par[grepl("^[0-9\\.]+$", par)])
 print(par)
 ## START ##
-cat("Reading input scRNA-seq reference from", par$sc_input, "\n")
+message("Reading input scRNA-seq reference from", par$sc_input, "\n")
 seurat_obj_scRNA <- readRDS(par$sc_input)
 ncelltypes <- length(unique(seurat_obj_scRNA[[par$annot, drop = TRUE]]))
-cat("Found", ncelltypes, "cell types in the reference.\n")
+message("Found", ncelltypes, "cell types in the reference.\n")
 
 if (DefaultAssay(seurat_obj_scRNA) != "SCT") {
-    cat("Preprocessing input scRNA-seq reference...\n")
-    seurat_obj_scRNA <- SCTransform(seurat_obj_scRNA,
+    message("Preprocessing input scRNA-seq reference...\n")
+    seurat_obj_scRNA <- SCTransform(
+        seurat_obj_scRNA,
         verbose = FALSE,
         conserve.memory = par$conserve.memory
     )
 }
 Idents(object = seurat_obj_scRNA) <- seurat_obj_scRNA[[par$annot, drop = TRUE]]
 
-cat("Computing marker genes...\n")
+message("Computing marker genes...\n")
 cluster_markers_all <- FindAllMarkers(
     object = seurat_obj_scRNA,
-    assay = "SCT", slot = "data",
+    assay = "SCT",
+    slot = "data",
     verbose = TRUE,
     only.pos = TRUE,
     logfc.threshold = par$logfc.threshold,
     min.pct = par$min.pct
 )
 
-cat("Reading input spatial data from", par$sp_input, "\n")
+message("Reading input spatial data from", par$sp_input, "\n")
 spatial_data <- readRDS(par$sp_input)
 
 if (class(spatial_data) != "Seurat") {
-    seurat_obj_visium <- CreateSeuratObject(counts = spatial_data$counts, assay = "Spatial")
+    seurat_obj_visium <- CreateSeuratObject(
+        counts = spatial_data$counts,
+        assay = "Spatial"
+    )
 } else {
     seurat_obj_visium <- spatial_data
-    DefaultAssay(seurat_obj_visium) <- names(seurat_obj_visium@assays)[grep("RNA|Spatial", names(seurat_obj_visium@assays))[1]]
+    DefaultAssay(seurat_obj_visium) <- names(seurat_obj_visium@assays)[grep(
+        "RNA|Spatial",
+        names(seurat_obj_visium@assays)
+    )[1]]
 }
 
-cat("Running deconvolution tool...\n")
+message("Running deconvolution tool...\n")
 start_time <- Sys.time()
 spotlight_deconv <- SPOTlight::spotlight_deconvolution(
     se_sc = seurat_obj_scRNA,
     counts_spatial = GetAssayData(seurat_obj_visium, slot = "counts"),
-    clust_vr = par$annot, cluster_markers = cluster_markers_all,
+    clust_vr = par$annot,
+    cluster_markers = cluster_markers_all,
     cl_n = par$cl_n, # Number of cells per cell type to use
     hvg = par$hvg, # Number of HVGs to use
     ntop = par$ntop, # How many of the marker genes to use (by default all)
@@ -75,14 +84,29 @@ spotlight_deconv <- SPOTlight::spotlight_deconvolution(
     min_cont = par$min_cont
 ) # Remove those cells contributing to a spot below a certain threshold
 end_time <- Sys.time()
-cat("Runtime: ", round((end_time - start_time)[[1]], 2), "s\n", sep = "")
+message("Runtime: ", round((end_time - start_time)[[1]], 2), "s\n", sep = "")
 
-cat("Printing results...\n")
+message("Printing results...\n")
 deconv_matrix <- spotlight_deconv[[2]][, 1:ncelltypes]
 
 # Remove all spaces and dots from cell names, sort them
-colnames(deconv_matrix) <- stringr::str_replace_all(colnames(deconv_matrix), "[/ .]", "")
-deconv_matrix <- deconv_matrix[, sort(colnames(deconv_matrix), method = "shell")]
+colnames(deconv_matrix) <- stringr::str_replace_all(
+    colnames(deconv_matrix),
+    "[/ .]",
+    ""
+)
+deconv_matrix <- deconv_matrix[, sort(
+    colnames(deconv_matrix),
+    method = "shell"
+)]
 
-write.table(deconv_matrix, file = par$output, sep = "\t", quote = FALSE, row.names = FALSE)
+write.table(
+    deconv_matrix,
+    file = par$output,
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE
+)
 # write.table(matrix("hello world, this is spotlight"), file=par$output, sep="\t", quote=FALSE, row.names=FALSE)
+
+message("Finished!")

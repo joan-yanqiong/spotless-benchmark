@@ -24,24 +24,27 @@ par$norm.method <- tolower(par$norm.method)
 print(par)
 
 if (!(par$norm.method %in% c("vst", "sct"))) {
-    stop("Normalization method not recognized. Please input either 'vst' or 'sct'")
+    stop(
+        "Normalization method not recognized. Please input either 'vst' or 'sct'"
+    )
 }
 
 ### START ###
-cat("Reading input scRNA-seq reference from", par$sc_input, "\n")
+message("Reading input scRNA-seq reference from", par$sc_input, "\n")
 seurat_obj_scRNA <- readRDS(par$sc_input)
 DefaultAssay(seurat_obj_scRNA) <- "RNA"
 ncelltypes <- length(unique(seurat_obj_scRNA[[par$annot, drop = TRUE]]))
-cat("Found ", ncelltypes, "cell types in the reference.\n")
+message("Found ", ncelltypes, "cell types in the reference.\n")
 
-cat("Reading input spatial data from", par$sp_input, "\n")
+message("Reading input spatial data from", par$sp_input, "\n")
 spatial_data <- readRDS(par$sp_input)
 
 if (class(spatial_data) != "Seurat") {
-    cat("Converting spatial data to Seurat object...\n")
+    message("Converting spatial data to Seurat object...\n")
     spatial_data <- CreateSeuratObject(spatial_data$counts)
 } else {
-    DefaultAssay(spatial_data) <- names(spatial_data@assays) %>% .[grep("RNA|Spatial", .)[1]]
+    DefaultAssay(spatial_data) <- names(spatial_data@assays) %>%
+        .[grep("RNA|Spatial", .)[1]]
 }
 
 # Check if multiple datasets have to be integrated
@@ -62,23 +65,28 @@ if (par$norm.method == "vst") {
             NormalizeData(verbose = FALSE) %>%
             FindVariableFeatures(
                 selection.method = "vst",
-                nfeatures = par$n_hvgs, verbose = FALSE
+                nfeatures = par$n_hvgs,
+                verbose = FALSE
             )
     })
     spatial_data <- spatial_data %>%
         NormalizeData(verbose = FALSE) %>%
         FindVariableFeatures(
-            selection.method = "vst", nfeatures = par$n_hvgs,
+            selection.method = "vst",
+            nfeatures = par$n_hvgs,
             verbose = FALSE
         )
 } else {
     seurat_obj_scRNA.list <- lapply(seurat_obj_scRNA.list, function(x) {
-        x %>% SCTransform(
-            variable.features.n = par$n_hvgs, verbose = FALSE,
-            conserve.memory = par$conserve.memory
-        )
+        x %>%
+            SCTransform(
+                variable.features.n = par$n_hvgs,
+                verbose = FALSE,
+                conserve.memory = par$conserve.memory
+            )
     })
-    spatial_data <- SCTransform(spatial_data,
+    spatial_data <- SCTransform(
+        spatial_data,
         assay = DefaultAssay(spatial_data),
         conserve.memory = par$conserve.memory
     )
@@ -87,22 +95,29 @@ if (par$norm.method == "vst") {
 # Integrate reference datasets if there are more than one
 if (length(seurat_obj_scRNA.list) > 1) {
     # Select HVGs that are in common between different datasets
-    features <- SelectIntegrationFeatures(seurat_obj_scRNA.list,
+    features <- SelectIntegrationFeatures(
+        seurat_obj_scRNA.list,
         nfeatures = par$n_int_features
     )
 
     if (par$norm.method == "sct") {
-        seurat_obj_scRNA.list <- PrepSCTIntegration(seurat_obj_scRNA.list,
+        seurat_obj_scRNA.list <- PrepSCTIntegration(
+            seurat_obj_scRNA.list,
             anchor.features = features
         )
     }
 
     if (par$reduction == "rpca") {
-        seurat_obj_scRNA.list <- lapply(seurat_obj_scRNA.list, RunPCA, features = features)
+        seurat_obj_scRNA.list <- lapply(
+            seurat_obj_scRNA.list,
+            RunPCA,
+            features = features
+        )
     }
 
     # Integrate dataset
-    scRNA.integration_anchors <- FindIntegrationAnchors(seurat_obj_scRNA.list,
+    scRNA.integration_anchors <- FindIntegrationAnchors(
+        seurat_obj_scRNA.list,
         anchor.features = features,
         normalization.method = norm.method,
         dims = 1:par$dims,
@@ -111,7 +126,8 @@ if (length(seurat_obj_scRNA.list) > 1) {
     rm(seurat_obj_scRNA.list)
     gc()
 
-    scRNA.integrated <- IntegrateData(scRNA.integration_anchors,
+    scRNA.integrated <- IntegrateData(
+        scRNA.integration_anchors,
         normalization.method = norm.method,
         dims = 1:par$dims
     )
@@ -127,16 +143,30 @@ if (par$norm.method == "vst") {
     scRNA.integrated <- scRNA.integrated %>% ScaleData(verbose = FALSE)
 }
 
-scRNA.integrated <- scRNA.integrated %>% RunPCA(npcs = par$npcs, verbose = FALSE)
+scRNA.integrated <- scRNA.integrated %>%
+    RunPCA(npcs = par$npcs, verbose = FALSE)
 
 # Some parameter checks, in case there are only a few spots
-par$k.score <- ifelse(par$k.score >= ncol(spatial_data), ncol(spatial_data) - 1, par$k.score)
-par$k.weight <- ifelse(par$k.weight > ncol(spatial_data), ncol(spatial_data), par$k.weight)
-par$dims <- ifelse(par$dims >= ncol(spatial_data), ncol(spatial_data) - 1, par$dims)
+par$k.score <- ifelse(
+    par$k.score >= ncol(spatial_data),
+    ncol(spatial_data) - 1,
+    par$k.score
+)
+par$k.weight <- ifelse(
+    par$k.weight > ncol(spatial_data),
+    ncol(spatial_data),
+    par$k.weight
+)
+par$dims <- ifelse(
+    par$dims >= ncol(spatial_data),
+    ncol(spatial_data) - 1,
+    par$dims
+)
 
 # Query the (integrated) single-cell data
 transfer_anchors <- FindTransferAnchors(
-    reference = scRNA.integrated, query = spatial_data,
+    reference = scRNA.integrated,
+    query = spatial_data,
     dims = 1:par$dims,
     reduction = par$reduction,
     npcs = par$npcs,
@@ -151,14 +181,17 @@ par$reduction <- ifelse(par$reduction == "rpca", "pcaproject", par$reduction)
 for (i in 0:(par$k.weight / 5) - 1) {
     # Try until k.weight is low enough
     k.weight <- par$k.weight - (i * 5)
-    cat("k.weight:", k.weight, "\n")
-    predictions <- try(TransferData(
-        anchorset = transfer_anchors,
-        refdata = scRNA.integrated[[par$annot, drop = TRUE]],
-        dims = 1:par$dims,
-        k.weight = k.weight,
-        weight.reduction = par$reduction
-    ), silent = TRUE)
+    message("k.weight:", k.weight, "\n")
+    predictions <- try(
+        TransferData(
+            anchorset = transfer_anchors,
+            refdata = scRNA.integrated[[par$annot, drop = TRUE]],
+            dims = 1:par$dims,
+            k.weight = k.weight,
+            weight.reduction = par$reduction
+        ),
+        silent = TRUE
+    )
 
     # Only exit loop when the predictions is a "data.frame" and not "try-error" class
     if (attr(predictions, "class") == "data.frame") {
@@ -172,9 +205,25 @@ deconv_matrix <- predictions %>%
     `colnames<-`(stringr::str_replace(colnames(.), "prediction.score.", ""))
 
 # PRINTING RESULTS #
-cat("Printing results...\n")
+message("Printing results...\n")
 # Remove all spaces and dots from cell names, sort them
-colnames(deconv_matrix) <- stringr::str_replace_all(colnames(deconv_matrix), "[/ .&-]", "")
-deconv_matrix <- deconv_matrix[, sort(colnames(deconv_matrix), method = "shell")]
+colnames(deconv_matrix) <- stringr::str_replace_all(
+    colnames(deconv_matrix),
+    "[/ .&-]",
+    ""
+)
+deconv_matrix <- deconv_matrix[, sort(
+    colnames(deconv_matrix),
+    method = "shell"
+)]
 
-write.table(deconv_matrix, file = par$output, sep = "\t", quote = FALSE, row.names = FALSE)
+message("Save predictions as txt")
+write.table(
+    deconv_matrix,
+    file = par$output,
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE
+)
+
+message("Finished!")

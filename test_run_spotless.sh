@@ -45,6 +45,7 @@ nextflow run ${project_dir} -resume \
     -w ${work_dir} \
     -params-file "params.yml" \
     -c ${config_file} \
-    --input assets/samplesheet.csv
+    --input assets/samplesheet.csv \
+    --outdir "${PWD}/output_testing"
 
 echo "Done!"

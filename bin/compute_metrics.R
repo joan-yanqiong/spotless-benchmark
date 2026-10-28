@@ -46,36 +46,57 @@ if (class(ground_truth_data) == "list") {
 ncells <- sum(celltype_cols)
 # Remove all spaces and dots from cell names, sort them
 known_props <- ground_truth_data$relative_spot_composition[, celltype_cols]
-colnames(known_props) <- stringr::str_replace_all(colnames(known_props), "[/ .]", "")
+colnames(known_props) <- stringr::str_replace_all(
+    colnames(known_props),
+    "[/ .]",
+    ""
+)
 
 # Load deconvolution results
 deconv_matrix <- read.table(par$props_file, sep = "\t", header = TRUE)
 
 # Match columns of known and deconv results
-columns_to_add <- colnames(deconv_matrix)[!colnames(deconv_matrix) %in% colnames(known_props)]
+columns_to_add <- colnames(deconv_matrix)[
+    !colnames(deconv_matrix) %in% colnames(known_props)
+]
 known_props <- cbind(
     known_props,
-    matrix(0,
-        nrow = nrow(known_props), ncol = length(columns_to_add),
+    matrix(
+        0,
+        nrow = nrow(known_props),
+        ncol = length(columns_to_add),
         dimnames = list(rownames(known_props), columns_to_add)
     )
 )
 known_props <- known_props[, sort(colnames(known_props), method = "shell")]
 
 if (!is.null(par$remap)) {
-    conversion <- read.table(par$remap, sep = "\t") %>% setNames(c("old_annot", "new_annot"))
+    conversion <- read.table(par$remap, sep = "\t") %>%
+        setNames(c("old_annot", "new_annot"))
     if (!all(colnames(deconv_matrix) %in% conversion$old_annot)) {
-        missing <- colnames(deconv_matrix)[which(!colnames(deconv_matrix) %in% conversion$old_annot)]
-        stop("Missing cell types in ", par$remap, ": ", paste(missing, collapse = ", "))
+        missing <- colnames(deconv_matrix)[which(
+            !colnames(deconv_matrix) %in% conversion$old_annot
+        )]
+        stop(
+            "Missing cell types in ",
+            par$remap,
+            ": ",
+            paste(missing, collapse = ", ")
+        )
     }
 
-    deconv_matrix <- sapply(unique(conversion$new_annot), function(new_celltype) {
-        rowSums(deconv_matrix[, conversion$old_annot[conversion$new_annot == new_celltype],
-            drop = FALSE
-        ])
-    })
+    deconv_matrix <- sapply(
+        unique(conversion$new_annot),
+        function(new_celltype) {
+            rowSums(deconv_matrix[,
+                conversion$old_annot[conversion$new_annot == new_celltype],
+                drop = FALSE
+            ])
+        }
+    )
     known_props <- sapply(unique(conversion$new_annot), function(new_celltype) {
-        rowSums(known_props[, conversion$old_annot[conversion$new_annot == new_celltype],
+        rowSums(known_props[,
+            conversion$old_annot[conversion$new_annot == new_celltype],
             drop = FALSE
         ])
     })
@@ -89,7 +110,11 @@ RMSE <- mean(sqrt(rowSums((known_props - deconv_matrix)**2) / ncells))
 
 # Classification metrics
 conf_mat <- getConfusionMatrix(known_props, deconv_matrix)
-accuracy <- round((conf_mat$tp + conf_mat$tn) / (conf_mat$tp + conf_mat$tn + conf_mat$fp + conf_mat$fn), 3)
+accuracy <- round(
+    (conf_mat$tp + conf_mat$tn) /
+        (conf_mat$tp + conf_mat$tn + conf_mat$fp + conf_mat$fn),
+    3
+)
 sensitivity <- round(conf_mat$tp / (conf_mat$tp + conf_mat$fn), 3)
 specificity <- round(conf_mat$tn / (conf_mat$tn + conf_mat$fp), 3)
 balanced_accuracy <- round((sensitivity + specificity) / 2, 3)
@@ -106,7 +131,10 @@ known_props_binary <- ifelse(known_props > 0, "present", "absent") %>%
 # eval_basic <- evalmod(scores = c(as.matrix(deconv_matrix)), labels=known_props_binary, mode="basic")
 
 # Area under precision-recall curve
-eval_prc <- evalmod(scores = c(as.matrix(deconv_matrix)), labels = known_props_binary)
+eval_prc <- evalmod(
+    scores = c(as.matrix(deconv_matrix)),
+    labels = known_props_binary
+)
 prc <- subset(auc(eval_prc), curvetypes == "PRC")$aucs
 roc <- subset(auc(eval_prc), curvetypes == "ROC")$aucs
 
@@ -115,13 +143,21 @@ jsd <- suppressMessages(
     sapply(seq_len(nrow(known_props)), function(i) {
         JSD(as.matrix(rbind(known_props[i, ], deconv_matrix[i, ])))
     })
-) %>% mean(na.rm = TRUE)
+) %>%
+    mean(na.rm = TRUE)
 
 metrics <- data.frame(
-    "corr" = corr_spots, "RMSE" = RMSE,
-    "accuracy" = accuracy, "balanced_accuracy" = balanced_accuracy,
-    "sensitivity" = sensitivity, "specificity" = specificity,
-    "precision" = precision, "F1" = F1, "F2" = F2, "prc" = prc, "roc" = roc,
+    "corr" = corr_spots,
+    "RMSE" = RMSE,
+    "accuracy" = accuracy,
+    "balanced_accuracy" = balanced_accuracy,
+    "sensitivity" = sensitivity,
+    "specificity" = specificity,
+    "precision" = precision,
+    "F1" = F1,
+    "F2" = F2,
+    "prc" = prc,
+    "roc" = roc,
     "jsd" = jsd
 )
 
